@@ -1,9 +1,0 @@
-{
-  "name": "CAF • Gestão Inteligente de Escalas",
-  "short_name": "CAF Escalas",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#f3f6fa",
-  "theme_color": "#13243d",
-  "icons": []
-}
