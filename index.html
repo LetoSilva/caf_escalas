@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#13243d">
+  <title>CSC Suprimentos • CAF • Gestão Inteligente de Escalas</title>
+  <link rel="stylesheet" href="estilo.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="loginView" class="login-screen">
+    <div class="login-card">
+      <div class="brand-mark">CAF</div>
+      <p>CSC Suprimentos</p>
+      <p class="eyebrow">CENTRAL DE ATENDIMENTO AO FORNECEDOR</p>
+      <h1>Gestão de Escalas</h1>
+      <p class="muted">Entre com seu acesso corporativo autorizado.</p>
+      <form id="loginForm">
+        <label>E-mail<input id="loginEmail" type="email" autocomplete="username" required placeholder="seu.email@empresa.com"></label>
+        <label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Sua senha"></label>
+        <button class="btn primary full" type="submit">Entrar no sistema</button>
+        <p id="loginMessage" class="form-message"></p>
+      </form>
+      <p class="tiny">Configure o projeto Supabase em <code>js/supabase-config.js</code>.</p>
+    </div>
+  </div>
+
+  <div id="appView" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><span class="brand-mark small">CAF</span><div><b>CAF • Escalas</b><small>Gestão de equipe</small></div></div>
+      <nav>
+        <button class="nav-item active" data-page="calendario">▦ <span>Calendário</span></button>
+        <button class="nav-item" data-page="equipe">♙ <span>Equipe</span></button>
+        <button class="nav-item" data-page="ausencias">◷ <span>Ausências</span></button>
+        <button class="nav-item" data-page="regras">⚙ <span>Regras e atividades</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sync-state"><i id="syncDot"></i><span id="syncText">Aguardando conexão</span></div>
+        <button id="logoutBtn" class="nav-item logout">↪ <span>Sair</span></button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div><p class="eyebrow">PLANEJAMENTO • COBERTURA • TRANSPARÊNCIA</p><h1 id="pageTitle">Calendário de escalas</h1></div>
+        <div class="top-actions"><span id="userLabel" class="user-label"></span><button id="todayBtn" class="btn light">Hoje</button></div>
+      </header>
+
+      <section id="page-calendario" class="page">
+        <div class="hero">
+          <div class="hero-accent"></div>
+          <div><p class="eyebrow">PROGRAMAÇÃO DA EQUIPE</p><h2 id="periodTitle">ESCALA DE FIM DE ANO</h2><p>Conexão <b>•</b> Descanso <b>•</b> Cobertura da equipe</p></div>
+          <div class="hero-period"><small>PERÍODO DA ESCALA</small><strong id="periodLabel">21 DEZ 2026 — 03 JAN 2027</strong></div>
+        </div>
+
+        <div class="toolbar">
+          <div class="period-controls">
+            <button id="prevPeriod" class="icon-btn" aria-label="Período anterior">‹</button>
+            <label class="compact-label">Início<input id="startDate" type="date"></label>
+            <label class="compact-label">Fim<input id="endDate" type="date"></label>
+            <button id="applyPeriod" class="btn primary">Aplicar período</button>
+            <button id="nextPeriod" class="icon-btn" aria-label="Próximo período">›</button>
+          </div>
+          <div class="toolbar-actions">
+            <button id="smartGenerateBtn" class="btn teal">✦ Gerar rodízio inteligente</button>
+            <button id="addDayBtn" class="btn light">＋ Programar dia</button>
+            <button id="exportPdfBtn" class="btn light">PDF</button>
+            <button id="exportJsonBtn" class="btn light">Backup JSON</button>
+            <label class="btn light file-btn">Importar JSON<input id="importJson" type="file" accept=".json,application/json"></label>
+          </div>
+        </div>
+
+        <div class="notice"><span>●</span> Nas duas semanas, o time trabalha de home office nos dias úteis, exceto nas folgas individuais e coletivas indicadas.</div>
+        <div id="calendarWeeks" class="calendar-weeks"></div>
+        <div class="legend">
+          <span><i class="legend-dot home"></i>Home office</span>
+          <span><i class="legend-dot individual"></i>Folga individual</span>
+          <span><i class="legend-dot collective"></i>Folga coletiva</span>
+          <span><i class="legend-dot weekend"></i>Fim de semana</span>
+          <span><i class="legend-dot work"></i>Dia útil / cobertura</span>
+        </div>
+      </section>
+
+      <section id="page-equipe" class="page hidden">
+        <div class="section-heading"><div><h2>Equipe</h2><p>Gerencie os colaboradores e a disponibilidade.</p></div><button id="addMemberBtn" class="btn primary">＋ Novo colaborador</button></div>
+        <div id="teamList" class="management-grid"></div>
+      </section>
+
+      <section id="page-ausencias" class="page hidden">
+        <div class="section-heading"><div><h2>Ausências</h2><p>Cadastre férias, afastamentos e indisponibilidades.</p></div><button id="addAbsenceBtn" class="btn primary">＋ Nova ausência</button></div>
+        <div id="absenceList" class="panel"></div>
+      </section>
+
+      <section id="page-regras" class="page hidden">
+        <div class="section-heading"><div><h2>Regras e atividades</h2><p>Configuração do rodízio e das atividades operacionais.</p></div><button id="saveRulesBtn" class="btn primary">Salvar regras</button></div>
+        <div class="panel rules-panel">
+          <h3>Atividades da escala</h3>
+          <p class="muted">As atividades abaixo preservam a estrutura do controle anterior. Você pode ajustar os nomes conforme a operação.</p>
+          <div id="activityFields" class="activity-fields"></div>
+          <div class="rule-note"><b>Regras iniciais:</b> Girlene permanece fixa no ServiceNow. Duda, Adri e Leto participam do rodízio. E-mail e V360 devem ficar com a mesma pessoa no dia; evitar atribuição consecutiva de E-mail para a mesma pessoa. Ausências devem ser consideradas na distribuição.</div>
+          <label class="check-row"><input id="avoidConsecutive" type="checkbox" checked> Evitar pessoa repetida em dias consecutivos no E-mail</label>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="dayDialog" class="modal">
+    <form method="dialog" id="dayForm">
+      <div class="modal-head"><div><p class="eyebrow">PROGRAMAÇÃO</p><h2 id="dayDialogTitle">Editar dia</h2></div><button class="icon-btn" value="cancel" aria-label="Fechar">×</button></div>
+      <input id="editDate" type="hidden">
+      <div class="form-grid">
+        <label>Tipo do dia<select id="dayType"><option value="home">Home office</option><option value="work">Dia útil / cobertura</option><option value="individual">Folga individual</option><option value="collective">Folga coletiva</option><option value="weekend">Fim de semana</option></select></label>
+        <label>Observação<input id="dayNote" placeholder="Ex.: time disponível até 17h"></label>
+      </div>
+      <div id="assignmentFields" class="assignment-fields"></div>
+      <div class="modal-actions"><button class="btn light" value="cancel">Cancelar</button><button id="saveDayBtn" class="btn primary" value="default">Salvar programação</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="memberDialog" class="modal">
+    <form method="dialog" id="memberForm">
+      <div class="modal-head"><h2 id="memberDialogTitle">Novo colaborador</h2><button class="icon-btn" value="cancel">×</button></div>
+      <input id="memberId" type="hidden">
+      <label>Nome<input id="memberName" required></label>
+      <label>Função / observação<input id="memberRole" placeholder="Ex.: Analista"></label>
+      <label class="check-row"><input id="memberActive" type="checkbox" checked> Colaborador ativo</label>
+      <div class="modal-actions"><button class="btn light" value="cancel">Cancelar</button><button id="saveMemberBtn" class="btn primary" value="default">Salvar</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="absenceDialog" class="modal">
+    <form method="dialog" id="absenceForm">
+      <div class="modal-head"><h2>Nova ausência</h2><button class="icon-btn" value="cancel">×</button></div>
+      <label>Colaborador<select id="absenceMember" required></select></label>
+      <div class="form-grid"><label>Início<input id="absenceStart" type="date" required></label><label>Fim<input id="absenceEnd" type="date" required></label></div>
+      <label>Tipo<select id="absenceType"><option>Férias</option><option>Afastamento</option><option>Folga</option><option>Outro</option></select></label>
+      <label>Observação<input id="absenceNote"></label>
+      <div class="modal-actions"><button class="btn light" value="cancel">Cancelar</button><button id="saveAbsenceBtn" class="btn primary" value="default">Salvar ausência</button></div>
+    </form>
+  </dialog>
+  <dialog id="generatorDialog" class="modal generator-modal">
+    <form method="dialog" id="generatorForm">
+      <div class="modal-head"><div><p class="eyebrow">AUTOMAÇÃO • REVISÃO</p><h2>Gerar rodízio inteligente</h2></div><button class="icon-btn" value="cancel">×</button></div>
+      <p class="muted">Escolha o período. O sistema gera uma prévia considerando colaboradores ativos, ausências e regras configuradas. Revise antes de aplicar.</p>
+      <div class="form-grid"><label>Data inicial<input id="genStart" type="date" required></label><label>Data final<input id="genEnd" type="date" required></label></div>
+      <label class="check-row"><input id="genWeekdays" type="checkbox" checked> Gerar somente em dias úteis</label>
+      <button id="runGeneratorBtn" class="btn teal" type="button">Gerar prévia</button>
+      <div id="generatorResults" class="generator-results"></div>
+      <div class="modal-actions"><button class="btn light" value="cancel">Cancelar</button><button id="applyGeneratedBtn" class="btn primary" type="button" disabled>Aplicar escala gerada</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast"></div>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/smart-generator.js"></script><script>if("serviceWorker" in navigator && location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js").catch(()=>{});}</script>
+</body>
+</html>
